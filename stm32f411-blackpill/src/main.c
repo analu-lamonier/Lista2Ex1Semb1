@@ -24,6 +24,7 @@
 /* GPIOC Base Addresses ******************************************************/
 
 #define STM32_GPIOC_BASE     0x40020800     /* 0x48000800-0x48000bff: GPIO Port C */
+#define STM32_GPIOA_BASE     0x40020000     /* 0x40020000- 0x400203ff: GPIO Port A */
 
 /* Register Offsets *********************************************************/
 
@@ -46,9 +47,17 @@
 #define STM32_GPIOC_ODR          (STM32_GPIOC_BASE+STM32_GPIO_ODR_OFFSET)
 #define STM32_GPIOC_BSRR         (STM32_GPIOC_BASE+STM32_GPIO_BSRR_OFFSET)
 
+#define STM32_GPIOA_MODER        (STM32_GPIOA_BASE+STM32_GPIO_MODER_OFFSET)
+#define STM32_GPIOA_OTYPER       (STM32_GPIOA_BASE+STM32_GPIO_OTYPER_OFFSET)
+#define STM32_GPIOA_PUPDR        (STM32_GPIOA_BASE+STM32_GPIO_PUPDR_OFFSET)
+#define STM32_GPIOA_ODR          (STM32_GPIOA_BASE+STM32_GPIO_ODR_OFFSET)
+#define STM32_GPIOA_BSRR         (STM32_GPIOA_BASE+STM32_GPIO_BSRR_OFFSET)
+
 /* AHB1 Peripheral Clock enable register */
 
 #define RCC_AHB1ENR_GPIOCEN      (1 << 2)  /* Bit 2:  IO port C clock enable */
+
+#define RCC_AHB1ENR_GPIOAEN      (1 << 2)  /* Bit 2:  IO port A clock enable */
 
 /* GPIO port mode register */
 
@@ -108,7 +117,6 @@
 
 int main(int argc, char *argv[])
 {
-  uint32_t i;
   uint32_t reg;
 
   /* Ponteiros para registradores */
@@ -119,10 +127,19 @@ int main(int argc, char *argv[])
   uint32_t *pGPIOC_PUPDR  = (uint32_t *)STM32_GPIOC_PUPDR;
   uint32_t *pGPIOC_BSRR   = (uint32_t *)STM32_GPIOC_BSRR;
 
+  uint32_t *pGPIOA_MODER  = (uint32_t *)STM32_GPIOA_MODER;
+  uint32_t *pGPIOA_OTYPER = (uint32_t *)STM32_GPIOA_OTYPER;
+  uint32_t *pGPIOA_PUPDR  = (uint32_t *)STM32_GPIOA_PUPDR;
+  uint32_t *pGPIOA_BSRR   = (uint32_t *)STM32_GPIOA_BSRR;
+ 
   /* Habilita clock GPIOC */
 
   reg  = *pRCC_AHB1ENR;
   reg |= RCC_AHB1ENR_GPIOCEN;
+  *pRCC_AHB1ENR = reg;
+
+  reg  = *pRCC_AHB1ENR;
+  reg |= RCC_AHB1ENR_GPIOAEN;
   *pRCC_AHB1ENR = reg;
 
   /* Configura PC13 como saida pull-up off e pull-down off */
@@ -142,17 +159,35 @@ int main(int argc, char *argv[])
   reg |= (GPIO_PUPDR_NONE << GPIO_PUPDR_SHIFT(13));
   *pGPIOC_PUPDR = reg;
 
+ 
+ /* Configura PA0 como saida pull-up off e pull-down off */
+  reg = *pGPIOA_MODER;
+  reg &= ~GPIO_MODER_MASK(0);
+  reg |= (GPIO_MODER_INPUT << GPIO_MODER_SHIFT(0));
+  *pGPIOA_MODER = reg;  
+
+  reg = *pGPIOA_OTYPER;
+  reg &= ~GPIO_OT_MASK(0);
+  reg |= (GPIO_OTYPER_OD << GPIO_OT_SHIFT(0));
+  *pGPIOA_OTYPER = reg;
+
+  reg = *pGPIOA_PUPDR;
+  reg &= ~GPIO_PUPDR_MASK(0);
+  reg |= (GPIO_PUPDR_NONE << GPIO_PUPDR_SHIFT(0));
+
+  *pGPIOA_PUPDR = reg;
+
+ 
   while(1)
     {
       /* Liga LED */
 
-      *pGPIOC_BSRR = GPIO_BSRR_RESET(13);
-      for (i = 0; i < LED_DELAY; i++);
-
-      /* Desliga LED */
-
-      *pGPIOC_BSRR = GPIO_BSRR_SET(13);
-      for (i = 0; i < LED_DELAY; i++);
+      if (*pGPIOA_BSRR == 1){
+        *pGPIOC_BSRR = GPIO_BSRR_SET(13);
+      } else {
+        *pGPIOC_BSRR = GPIO_BSRR_RESET(13);
+      }
+     
     }
 
   /* Nunca deveria chegar aqui */
